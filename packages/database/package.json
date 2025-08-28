@@ -1,0 +1,23 @@
+{
+  "name": "@spot-exchange/database",
+  "version": "1.0.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "db:generate": "supabase gen types typescript --project-id \"$SUPABASE_PROJECT_ID\" > ./src/types.ts",
+    "db:migrate": "supabase db push",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.3",
+    "@spot-exchange/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.1",
+    "typescript": "^5.3.3",
+    "supabase": "^1.142.2"
+  }
+}

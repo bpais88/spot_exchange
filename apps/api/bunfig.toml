@@ -1,0 +1,13 @@
+[install]
+# Configure package manager settings
+auto = true
+production = false
+
+[test]
+# Use built-in test runner
+root = "./src"
+
+[build]
+# Build configuration
+target = "bun"
+sourcemap = "external"
