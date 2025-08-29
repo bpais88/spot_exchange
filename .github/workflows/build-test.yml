@@ -1,0 +1,47 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        
+    - name: Install dependencies
+      run: |
+        cd apps/web
+        npm install
+        
+    - name: Type check
+      run: |
+        cd apps/web
+        npm run type-check
+        
+    - name: Lint
+      run: |
+        cd apps/web
+        npm run lint
+        
+    - name: Build
+      run: |
+        cd apps/web
+        npm run build
+        
+    - name: Report success
+      if: success()
+      run: echo "✅ Build successful!"
+      
+    - name: Report failure
+      if: failure()
+      run: echo "❌ Build failed! Check the logs."

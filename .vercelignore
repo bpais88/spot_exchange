@@ -1,0 +1,34 @@
+# Build outputs
+.turbo/
+dist/
+build/
+.next/
+
+# Dependencies
+node_modules/
+
+# Environment files
+.env*
+!.env.example
+
+# Logs
+*.log
+
+# Development files
+*.sql
+test-build.sh
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Packages (not needed for web app)
+packages/
+apps/api/
+
+# Documentation
+*.md
+!README.md
