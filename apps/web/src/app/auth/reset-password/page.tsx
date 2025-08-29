@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Truck } from 'lucide-react'
+import { validatePassword } from '@/lib/passwordValidation'
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('')
@@ -40,8 +41,10 @@ export default function ResetPassword() {
       return
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long')
+    // Validate password strength
+    const passwordValidation = validatePassword(password)
+    if (!passwordValidation.isValid) {
+      setError('Password does not meet requirements:\n' + passwordValidation.errors.join('\n'))
       return
     }
 

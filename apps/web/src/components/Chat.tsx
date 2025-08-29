@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Send, User, X } from 'lucide-react'
+import { sanitizeNotes, escapeHtml } from '@/lib/sanitization'
 
 interface Message {
   id: string
@@ -226,7 +227,7 @@ export default function Chat({ opportunityId, currentUserId, onClose }: ChatProp
                           {formatTime(message.timestamp)}
                         </span>
                       </div>
-                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <p className="text-sm whitespace-pre-wrap">{escapeHtml(message.content)}</p>
                     </div>
                   </div>
                 ))}
@@ -241,7 +242,7 @@ export default function Chat({ opportunityId, currentUserId, onClose }: ChatProp
             <input
               type="text"
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
+              onChange={(e) => setNewMessage(sanitizeNotes(e.target.value))}
               placeholder="Type your message..."
               className="flex-1 form-input"
               onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}

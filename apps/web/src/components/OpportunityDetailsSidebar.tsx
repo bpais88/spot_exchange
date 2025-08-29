@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, MapPin, Calendar, Truck, DollarSign, User, MessageSquare, Activity, FileText, Clock } from 'lucide-react'
+import { X, MapPin, Calendar, Truck, DollarSign, User, MessageSquare, Activity, FileText, Clock, AlertTriangle } from 'lucide-react'
 import ActivityTimeline from './ActivityTimeline'
+import { validateBidAmount, formatCurrency, sanitizeBidAmount, parseBidAmount } from '@/lib/bidValidation'
+import { sanitizeNotes, escapeHtml } from '@/lib/sanitization'
 
 interface Opportunity {
   id: string
@@ -61,6 +63,19 @@ export default function OpportunityDetailsSidebar({
   const [editingBid, setEditingBid] = useState<string | null>(null)
   const [editAmount, setEditAmount] = useState('')
   const [editNotes, setEditNotes] = useState('')
+  const [bidValidation, setBidValidation] = useState(validateBidAmount('', {}))
+
+  // Real-time bid validation
+  useEffect(() => {
+    if (!opportunity) return
+    
+    const validation = validateBidAmount(bidAmount, {
+      minimumRate: opportunity.minimumRate,
+      currentBestBid: opportunity.currentBestBid,
+      maxBidAmount: 1000000
+    })
+    setBidValidation(validation)
+  }, [bidAmount, opportunity])
 
   useEffect(() => {
     if (!isOpen || !opportunity) return
@@ -158,7 +173,23 @@ export default function OpportunityDetailsSidebar({
 
   const handleSubmitBid = async () => {
     if (!bidAmount) return
-    await onPlaceBid(parseInt(bidAmount), bidNotes)
+    
+    // Validate bid before submission
+    if (!bidValidation.isValid) {
+      alert('Please fix the following issues:\n' + bidValidation.errors.join('\n'))
+      return
+    }
+    
+    // Show warnings if any
+    if (bidValidation.warnings.length > 0) {
+      const proceed = confirm(
+        'Warning:\n' + bidValidation.warnings.join('\n') + '\n\nDo you want to proceed with this bid?'
+      )
+      if (!proceed) return
+    }
+    
+    const amount = parseBidAmount(bidAmount)
+    await onPlaceBid(amount, bidNotes)
     setBidAmount('')
     setBidNotes('')
     // Reload bids to show the new bid
@@ -360,28 +391,69 @@ export default function OpportunityDetailsSidebar({
                 <div className="space-y-4">
                   <div>
                     <label className="form-label">Bid Amount</label>
-                    <input
-                      type="number"
-                      value={bidAmount}
-                      onChange={(e) => setBidAmount(e.target.value)}
-                      placeholder="Enter bid amount"
-                      className="form-input"
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                      <input
+                        type="text"
+                        value={bidAmount}
+                        onChange={(e) => setBidAmount(sanitizeBidAmount(e.target.value))}
+                        placeholder="0.00"
+                        className={`form-input pl-8 ${
+                          bidAmount && !bidValidation.isValid ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''
+                        }`}
+                      />
+                    </div>
+                    
+                    {/* Validation feedback */}
+                    {bidAmount && (
+                      <div className="mt-2 space-y-1">
+                        {bidValidation.errors.map((error, index) => (
+                          <div key={index} className="flex items-center text-sm text-red-600">
+                            <AlertTriangle className="h-4 w-4 mr-1" />
+                            {error}
+                          </div>
+                        ))}
+                        
+                        {bidValidation.warnings.map((warning, index) => (
+                          <div key={index} className="flex items-center text-sm text-yellow-600">
+                            <AlertTriangle className="h-4 w-4 mr-1" />
+                            {warning}
+                          </div>
+                        ))}
+                        
+                        {bidValidation.isValid && bidValidation.warnings.length === 0 && (
+                          <div className="text-sm text-green-600">
+                            ✓ Valid bid amount
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Bid context information */}
+                    <div className="mt-2 text-xs text-gray-500">
+                      Minimum rate: {formatCurrency(opportunity.minimumRate)} | 
+                      Current best: {formatCurrency(opportunity.currentBestBid)}
+                    </div>
                   </div>
                   <div>
                     <label className="form-label">Notes (Optional)</label>
                     <textarea
                       value={bidNotes}
-                      onChange={(e) => setBidNotes(e.target.value)}
+                      onChange={(e) => setBidNotes(sanitizeNotes(e.target.value))}
                       placeholder="Add any notes about your bid..."
                       className="form-input"
                       rows={3}
+                      maxLength={1000}
                     />
                   </div>
                   <button
                     onClick={handleSubmitBid}
-                    disabled={!bidAmount}
-                    className="btn-success w-full"
+                    disabled={!bidAmount || !bidValidation.isValid}
+                    className={`w-full py-2 px-4 rounded-md font-medium transition-colors ${
+                      !bidAmount || !bidValidation.isValid
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-green-600 hover:bg-green-700 text-white'
+                    }`}
                   >
                     Submit Bid
                   </button>
@@ -435,7 +507,7 @@ export default function OpportunityDetailsSidebar({
                               <span> (bid placed by {bid.placedBy.name}, Account Manager)</span>
                             )}
                           </p>
-                          {bid.notes && <p className="mt-1 italic">"{bid.notes}"</p>}
+                          {bid.notes && <p className="mt-1 italic">"{escapeHtml(bid.notes)}"</p>}
                         </div>
                         {bid.status === 'active' && currentUserId && bid.carrierId === currentUserId && (
                           <div className="flex space-x-2">

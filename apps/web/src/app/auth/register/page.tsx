@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Truck } from 'lucide-react'
+import { Truck, Eye, EyeOff } from 'lucide-react'
+import { validatePassword, getPasswordStrengthColor, getPasswordStrengthText } from '@/lib/passwordValidation'
+import { sanitizeCompanyName, sanitizeEmail } from '@/lib/sanitization'
+import { showError, logError } from '@/lib/errorHandling'
 
 export default function Register() {
   const [email, setEmail] = useState('')
@@ -11,10 +14,24 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [companyName, setCompanyName] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [passwordValidation, setPasswordValidation] = useState(validatePassword(''))
   const router = useRouter()
+
+  // Real-time password validation
+  useEffect(() => {
+    setPasswordValidation(validatePassword(password))
+  }, [password])
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate password strength
+    if (!passwordValidation.isValid) {
+      alert('Please fix the password requirements:\n' + passwordValidation.errors.join('\n'))
+      return
+    }
     
     if (password !== confirmPassword) {
       alert('Passwords do not match')
@@ -38,8 +55,8 @@ export default function Register() {
       })
 
       if (error) {
-        console.error('Registration error:', error)
-        alert(`Registration failed: ${error.message}`)
+        logError(error, 'User registration')
+        showError(error, 'Registration failed. Please try again with different details.')
         return
       }
 
@@ -51,8 +68,8 @@ export default function Register() {
         router.push('/dashboard')
       }
     } catch (error) {
-      console.error('Registration failed:', error)
-      alert('Registration failed. Please try again.')
+      logError(error, 'Registration process')
+      showError(error, 'Registration failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -92,7 +109,7 @@ export default function Register() {
                   type="text"
                   required
                   value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
+                  onChange={(e) => setCompanyName(sanitizeCompanyName(e.target.value))}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                   placeholder="Your company name"
                 />
@@ -111,7 +128,7 @@ export default function Register() {
                   autoComplete="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(sanitizeEmail(e.target.value))}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                   placeholder="you@company.com"
                 />
@@ -122,38 +139,111 @@ export default function Register() {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Password
               </label>
-              <div className="mt-1">
+              <div className="mt-1 relative">
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  className={`appearance-none block w-full px-3 py-2 pr-10 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                    password && !passwordValidation.isValid ? 'border-red-300' : 'border-gray-300'
+                  }`}
                   placeholder="Enter password"
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400" />
+                  )}
+                </button>
               </div>
+              
+              {/* Password strength indicator */}
+              {password && (
+                <div className="mt-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-gray-600">Password strength:</span>
+                    <span className={`text-xs font-medium ${getPasswordStrengthColor(passwordValidation.strength)}`}>
+                      {getPasswordStrengthText(passwordValidation.strength)}
+                    </span>
+                  </div>
+                  
+                  {/* Strength bar */}
+                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div 
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        passwordValidation.strength === 'strong' ? 'bg-green-600 w-full' :
+                        passwordValidation.strength === 'medium' ? 'bg-yellow-600 w-2/3' :
+                        'bg-red-600 w-1/3'
+                      }`}
+                    ></div>
+                  </div>
+                  
+                  {/* Validation errors */}
+                  {passwordValidation.errors.length > 0 && (
+                    <div className="mt-2 text-xs text-red-600">
+                      <ul className="list-disc list-inside space-y-1">
+                        {passwordValidation.errors.map((error, index) => (
+                          <li key={index}>{error}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
                 Confirm Password
               </label>
-              <div className="mt-1">
+              <div className="mt-1 relative">
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  className={`appearance-none block w-full px-3 py-2 pr-10 border rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm ${
+                    confirmPassword && password !== confirmPassword ? 'border-red-300' : 'border-gray-300'
+                  }`}
                   placeholder="Confirm password"
                 />
+                <button
+                  type="button"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4 text-gray-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-400" />
+                  )}
+                </button>
               </div>
+              
+              {/* Password match validation */}
+              {confirmPassword && password !== confirmPassword && (
+                <div className="mt-1 text-xs text-red-600">
+                  Passwords do not match
+                </div>
+              )}
+              
+              {confirmPassword && password === confirmPassword && password && (
+                <div className="mt-1 text-xs text-green-600">
+                  ✓ Passwords match
+                </div>
+              )}
             </div>
 
             <div>

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Truck, Eye, EyeOff } from 'lucide-react'
+import { showError, logError } from '@/lib/errorHandling'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -25,20 +26,16 @@ export default function LoginPage() {
       })
       
       if (error) {
-        console.error('Login error:', error)
-        if (error.message === 'Invalid login credentials') {
-          alert('Invalid email or password. Please check your credentials.')
-        } else {
-          alert(`Login failed: ${error.message}`)
-        }
+        logError(error, 'Login attempt')
+        showError(error, 'Login failed. Please check your credentials and try again.')
         return
       }
       
       // Redirect to dashboard on success
       router.push('/dashboard')
     } catch (error) {
-      console.error('Login error:', error)
-      alert('Login failed. Please try again.')
+      logError(error, 'Login process')
+      showError(error, 'Login failed. Please try again.')
     } finally {
       setLoading(false)
     }
