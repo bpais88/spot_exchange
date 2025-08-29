@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Truck, MapPin, Calendar, DollarSign, MessageSquare, TrendingUp, Filter, LogOut } from 'lucide-react'
 import Chat from '@/components/Chat'
 import OpportunityDetailsSidebar from '@/components/OpportunityDetailsSidebar'
+import SearchContainer from '@/components/SearchContainer'
 
 // Mock data for development
 const mockOpportunities = [
@@ -69,6 +70,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [opportunities, setOpportunities] = useState(mockOpportunities)
+  const [filteredOpportunities, setFilteredOpportunities] = useState(mockOpportunities)
   const [filter, setFilter] = useState('all')
   const [showChat, setShowChat] = useState<string | null>(null)
   const [selectedOpportunityDetails, setSelectedOpportunityDetails] = useState<string | null>(null)
@@ -269,10 +271,36 @@ export default function Dashboard() {
       })) || []
 
       setOpportunities(transformedOpportunities)
+      setFilteredOpportunities(transformedOpportunities)
     } catch (error) {
       console.error('Failed to load opportunities:', error)
       // Fallback to mock data if database fails
       setOpportunities(mockOpportunities)
+      setFilteredOpportunities(mockOpportunities)
+    }
+  }
+
+  const handleSearchResults = (results: any) => {
+    if (results?.opportunities) {
+      // Transform search results to match dashboard format
+      const transformedResults = results.opportunities.map((opp: any) => ({
+        id: opp.id,
+        origin: { city: opp.origin?.city, state: opp.origin?.state },
+        destination: { city: opp.destination?.city, state: opp.destination?.state },
+        equipment: opp.equipment || [],
+        pickupDate: opp.pickup_date,
+        deliveryDate: opp.delivery_date,
+        distance: opp.metadata?.distance || 0,
+        currentBestBid: opp.current_best_bid || 0,
+        minimumRate: opp.minimum_rate || 0,
+        status: opp.status,
+        bidsCount: opp.bids?.length || 0,
+        cargo: opp.cargo_details?.description || '',
+        weight: opp.cargo_details?.weight || 0,
+        specialRequirements: opp.metadata?.special_requirements || ''
+      }))
+      
+      setFilteredOpportunities(transformedResults)
     }
   }
 
@@ -487,7 +515,16 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Advanced Search Filters */}
+        <div className="mb-8 border-2 border-blue-500 p-4 rounded-lg bg-blue-50">
+          <h2 className="text-lg font-bold text-blue-800 mb-4">🔍 Advanced Search (New Feature)</h2>
+          <SearchContainer 
+            onResultsChange={handleSearchResults}
+            autoSearch={false}
+          />
+        </div>
+
+        {/* Quick Filters */}
         <div className="mb-6">
           <div className="flex items-center space-x-4">
             <Filter className="h-5 w-5 text-gray-400" />
@@ -514,7 +551,7 @@ export default function Dashboard() {
 
         {/* Opportunities List */}
         <div className="space-y-6">
-          {opportunities.map((opportunity) => (
+          {filteredOpportunities.map((opportunity) => (
             <div key={opportunity.id} className="card p-6 hover:shadow-lg transition-shadow">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -616,7 +653,7 @@ export default function Dashboard() {
       {/* Opportunity Details Sidebar */}
       {selectedOpportunityDetails && (
         <OpportunityDetailsSidebar
-          opportunity={opportunities.find(opp => opp.id === selectedOpportunityDetails)!}
+          opportunity={filteredOpportunities.find(opp => opp.id === selectedOpportunityDetails) || opportunities.find(opp => opp.id === selectedOpportunityDetails)!}
           isOpen={!!selectedOpportunityDetails}
           onClose={() => setSelectedOpportunityDetails(null)}
           onPlaceBid={handlePlaceBid}
