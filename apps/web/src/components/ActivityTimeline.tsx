@@ -107,29 +107,7 @@ export default function ActivityTimeline({ opportunityId }: ActivityTimelineProp
         })
       }
 
-      // Add formal activity records if available
-      if (activityData) {
-        activityData.forEach(activity => {
-          const iconMap: any = {
-            'bid_placed': DollarSign,
-            'bid_withdrawn': X,
-            'message_sent': MessageSquare,
-            'opportunity_viewed': UserCheck,
-            'opportunity_created': TrendingUp
-          }
-
-          allActivities.push({
-            id: activity.id,
-            type: activity.action,
-            description: formatActivityDescription(activity.action, activity.details),
-            timestamp: activity.created_at,
-            userId: activity.user_id,
-            metadata: activity.details,
-            icon: iconMap[activity.action] || AlertCircle,
-            color: getActivityColor(activity.action)
-          })
-        })
-      }
+      // Skip formal activity records since opportunity_activity table doesn't exist yet
 
       // Sort by timestamp (most recent first)
       allActivities.sort((a, b) => 
