@@ -27,37 +27,6 @@ export default function ActivityTimeline({ opportunityId }: ActivityTimelineProp
     if (!opportunityId) return
     
     loadActivities()
-    
-    // Set up real-time subscription for activity updates
-    const setupSubscription = async () => {
-      const { supabase } = await import('@/lib/supabase')
-      
-      const subscription = supabase
-        .channel(`activity-${opportunityId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'opportunity_activity',
-            filter: `opportunity_id=eq.${opportunityId}`,
-          },
-          (payload) => {
-            console.log('New activity:', payload)
-            loadActivities() // Reload all activities when new one is added
-          }
-        )
-        .subscribe()
-
-      return () => {
-        subscription.unsubscribe()
-      }
-    }
-    
-    const cleanup = setupSubscription()
-    return () => {
-      cleanup.then(cleanupFn => cleanupFn?.())
-    }
   }, [opportunityId])
 
   const loadActivities = async () => {
@@ -65,17 +34,8 @@ export default function ActivityTimeline({ opportunityId }: ActivityTimelineProp
     try {
       const { supabase } = await import('@/lib/supabase')
       
-      // Load activities from opportunity_activity table
-      const { data: activityData, error: activityError } = await supabase
-        .from('opportunity_activity')
-        .select('*')
-        .eq('opportunity_id', opportunityId)
-        .order('created_at', { ascending: false })
-        .limit(50)
-
-      if (activityError) {
-        console.warn('Activity table not available:', activityError)
-      }
+      // Skip opportunity_activity table as it doesn't exist yet
+      const activityData = null
 
       // Load bid history as activities
       const { data: bidsData, error: bidsError } = await supabase
