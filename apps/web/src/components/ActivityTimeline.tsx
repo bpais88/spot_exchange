@@ -107,7 +107,7 @@ export default function ActivityTimeline({ opportunityId }: ActivityTimelineProp
         })
       }
 
-      // Skip formal activity records since opportunity_activity table doesn't exist yet
+      // Note: opportunity_activity table integration will be added in future update
 
       // Sort by timestamp (most recent first)
       allActivities.sort((a, b) => 
