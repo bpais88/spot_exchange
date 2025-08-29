@@ -58,6 +58,9 @@ export default function OpportunityDetailsSidebar({
   const [bidNotes, setBidNotes] = useState('')
   const [bids, setBids] = useState<Bid[]>([])
   const [loadingBids, setLoadingBids] = useState(false)
+  const [editingBid, setEditingBid] = useState<string | null>(null)
+  const [editAmount, setEditAmount] = useState('')
+  const [editNotes, setEditNotes] = useState('')
 
   useEffect(() => {
     if (!isOpen || !opportunity) return
@@ -184,6 +187,57 @@ export default function OpportunityDetailsSidebar({
       console.error('Failed to withdraw bid:', error)
       alert('Failed to withdraw bid')
     }
+  }
+
+  const handleEditBid = (bid: Bid) => {
+    setEditingBid(bid.id)
+    setEditAmount(bid.amount.toString())
+    setEditNotes(bid.notes || '')
+  }
+
+  const handleUpdateBid = async (bidId: string) => {
+    if (!editAmount || !currentUserId) return
+    
+    const amount = parseFloat(editAmount)
+    if (amount <= 0) {
+      alert('Please enter a valid bid amount')
+      return
+    }
+
+    try {
+      const { supabase } = await import('@/lib/supabase')
+      
+      const { error } = await supabase
+        .from('bids')
+        .update({ 
+          amount: amount,
+          notes: editNotes || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bidId)
+        .eq('carrier_id', currentUserId)
+      
+      if (error) {
+        console.error('Error updating bid:', error)
+        alert('Failed to update bid')
+        return
+      }
+      
+      alert('Bid updated successfully')
+      setEditingBid(null)
+      setEditAmount('')
+      setEditNotes('')
+      loadBids() // Reload to show updated bid
+    } catch (error) {
+      console.error('Failed to update bid:', error)
+      alert('Failed to update bid')
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingBid(null)
+    setEditAmount('')
+    setEditNotes('')
   }
 
   const formatCurrency = (amount: number) => `$${amount.toLocaleString()}`
@@ -384,16 +438,78 @@ export default function OpportunityDetailsSidebar({
                           {bid.notes && <p className="mt-1 italic">"{bid.notes}"</p>}
                         </div>
                         {bid.status === 'active' && currentUserId && bid.carrierId === currentUserId && (
-                          <button
-                            onClick={() => handleWithdrawBid(bid.id)}
-                            className="text-sm text-red-600 hover:text-red-800 font-medium"
-                          >
-                            Withdraw
-                          </button>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleEditBid(bid)}
+                              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleWithdrawBid(bid.id)}
+                              className="text-sm text-red-600 hover:text-red-800 font-medium"
+                            >
+                              Withdraw
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
                     ))}
+                  </div>
+                )}
+                
+                {/* Edit Bid Modal */}
+                {editingBid && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 z-60 flex items-center justify-center">
+                    <div className="bg-white rounded-lg p-6 w-96 mx-4">
+                      <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Your Bid</h3>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Bid Amount ($)
+                          </label>
+                          <input
+                            type="number"
+                            value={editAmount}
+                            onChange={(e) => setEditAmount(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Enter amount"
+                            min="1"
+                            step="1"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Notes (Optional)
+                          </label>
+                          <textarea
+                            value={editNotes}
+                            onChange={(e) => setEditNotes(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            rows={3}
+                            placeholder="Add any notes about your bid..."
+                          />
+                        </div>
+                        
+                        <div className="flex space-x-3 pt-4">
+                          <button
+                            onClick={() => handleUpdateBid(editingBid)}
+                            className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 font-medium"
+                          >
+                            Update Bid
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 font-medium"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

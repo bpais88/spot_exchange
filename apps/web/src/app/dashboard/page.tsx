@@ -294,6 +294,20 @@ export default function Dashboard() {
     )
   }
 
+  const handleViewOpportunity = async (opportunityId: string) => {
+    setSelectedOpportunityDetails(opportunityId)
+    
+    // Track opportunity view for analytics (non-blocking)
+    try {
+      const { supabase } = await import('@/lib/supabase')
+      // For now, we'll add this to a simple tracking without the opportunity_activity table
+      console.log(`Opportunity ${opportunityId} viewed by user ${user?.id}`)
+    } catch (error) {
+      // Silently fail - viewing shouldn't be blocked by tracking issues
+      console.debug('View tracking failed:', error)
+    }
+  }
+
   const handlePlaceBid = async (amount: number, notes?: string) => {
     if (!amount || !selectedOpportunityDetails) return
     
@@ -570,7 +584,7 @@ export default function Dashboard() {
                 {/* Actions */}
                 <div className="ml-6 flex flex-col space-y-2">
                   <button
-                    onClick={() => setSelectedOpportunityDetails(opportunity.id)}
+                    onClick={() => handleViewOpportunity(opportunity.id)}
                     className="btn-primary"
                   >
                     View Details

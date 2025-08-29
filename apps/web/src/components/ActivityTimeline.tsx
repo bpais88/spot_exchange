@@ -67,6 +67,7 @@ export default function ActivityTimeline({ opportunityId }: ActivityTimelineProp
       if (bidsData) {
         bidsData.forEach(bid => {
           if (bid.status === 'active') {
+            // Show bid placement
             allActivities.push({
               id: `bid-${bid.id}`,
               type: 'bid_placed',
@@ -77,6 +78,20 @@ export default function ActivityTimeline({ opportunityId }: ActivityTimelineProp
               icon: DollarSign,
               color: 'text-green-600'
             })
+            
+            // Show bid update if it was updated
+            if (bid.updated_at && bid.updated_at !== bid.created_at) {
+              allActivities.push({
+                id: `bid-updated-${bid.id}`,
+                type: 'bid_updated',
+                description: `Bid updated to: $${bid.amount.toLocaleString()}`,
+                timestamp: bid.updated_at,
+                userId: bid.carrier_id,
+                metadata: { amount: bid.amount, notes: bid.notes },
+                icon: TrendingUp,
+                color: 'text-blue-600'
+              })
+            }
           } else if (bid.status === 'withdrawn') {
             allActivities.push({
               id: `bid-withdrawn-${bid.id}`,
@@ -140,6 +155,8 @@ export default function ActivityTimeline({ opportunityId }: ActivityTimelineProp
     switch (action) {
       case 'bid_placed':
         return `Bid placed: $${details?.amount?.toLocaleString() || 'N/A'}`
+      case 'bid_updated':
+        return `Bid updated to: $${details?.amount?.toLocaleString() || 'N/A'}`
       case 'bid_withdrawn':
         return `Bid withdrawn`
       case 'message_sent':
@@ -159,6 +176,8 @@ export default function ActivityTimeline({ opportunityId }: ActivityTimelineProp
     switch (action) {
       case 'bid_placed':
         return 'text-green-600'
+      case 'bid_updated':
+        return 'text-blue-600'
       case 'bid_withdrawn':
         return 'text-red-600'
       case 'message_sent':
