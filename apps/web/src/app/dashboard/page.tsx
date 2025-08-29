@@ -365,20 +365,6 @@ export default function Dashboard() {
       
       // Show success message
       alert(`Bid of $${amount.toLocaleString()} placed successfully!`)
-      
-      // Log activity (optional - don't fail if this doesn't work)
-      try {
-        await supabase
-          .from('opportunity_activity')
-          .insert({
-            opportunity_id: selectedOpportunityDetails,
-            user_id: user.id,
-            action: 'bid_placed',
-            details: { amount, notes }
-          })
-      } catch (activityError) {
-        console.warn('Activity logging not available yet:', activityError)
-      }
 
     } catch (error: any) {
       console.error('Failed to place bid:', error)

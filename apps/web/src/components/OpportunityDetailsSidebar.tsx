@@ -180,20 +180,6 @@ export default function OpportunityDetailsSidebar({
       
       alert('Bid withdrawn successfully')
       loadBids() // Reload to show updated status
-      
-      // Log activity
-      try {
-        await supabase
-          .from('opportunity_activity')
-          .insert({
-            opportunity_id: opportunity.id,
-            user_id: currentUserId,
-            action: 'bid_withdrawn',
-            details: { bid_id: bidId }
-          })
-      } catch (activityError) {
-        console.warn('Activity logging not available:', activityError)
-      }
     } catch (error) {
       console.error('Failed to withdraw bid:', error)
       alert('Failed to withdraw bid')
