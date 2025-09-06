@@ -238,6 +238,21 @@ export default function Dashboard() {
 
       if (error) {
         console.error('Error fetching opportunities:', error)
+        // If no opportunities found, show empty state instead of mock data
+        if (error.code === 'PGRST116' || !opportunitiesData || opportunitiesData.length === 0) {
+          console.log('No opportunities found in database - showing empty state')
+          setOpportunities([])
+          setFilteredOpportunities([])
+          return
+        }
+        throw error // Re-throw other errors to hit catch block
+      }
+
+      // If no opportunities found, show empty state
+      if (!opportunitiesData || opportunitiesData.length === 0) {
+        console.log('No opportunities found in database - showing empty state')
+        setOpportunities([])
+        setFilteredOpportunities([])
         return
       }
 
@@ -274,7 +289,8 @@ export default function Dashboard() {
       setFilteredOpportunities(transformedOpportunities)
     } catch (error) {
       console.error('Failed to load opportunities:', error)
-      // Fallback to mock data if database fails
+      // Fallback to mock data on database connection errors
+      console.log('Using mock data due to database error')
       setOpportunities(mockOpportunities)
       setFilteredOpportunities(mockOpportunities)
     }
@@ -551,7 +567,19 @@ export default function Dashboard() {
 
         {/* Opportunities List */}
         <div className="space-y-6">
-          {filteredOpportunities.map((opportunity) => (
+          {filteredOpportunities.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-lg">
+              <Truck className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No opportunities found</h3>
+              <p className="text-gray-600 mb-4">Get started by generating some test opportunities</p>
+              <button 
+                onClick={generateTestOpportunities}
+                className="btn-primary"
+              >
+                Generate Test Opportunities
+              </button>
+            </div>
+          ) : filteredOpportunities.map((opportunity) => (
             <div key={opportunity.id} className="card p-6 hover:shadow-lg transition-shadow">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
