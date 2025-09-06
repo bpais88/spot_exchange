@@ -46,7 +46,6 @@ export async function POST(request: NextRequest) {
       .from('opportunities')
       .select(`
         *,
-        shipper:shippers!inner(name, contact_info),
         bids(id, amount, status, carrier_id)
       `)
 
@@ -101,28 +100,29 @@ export async function POST(request: NextRequest) {
 
 // Helper function to apply filters to the query
 function applyFilters(query: any, filters: SearchFilters, userId: string) {
-  // Location filters
+  // Location filters - using JSONB fields
   if (filters.origin?.city) {
-    query = query.ilike('origin_city', `%${filters.origin.city}%`)
+    query = query.ilike('origin->>city', `%${filters.origin.city}%`)
   }
   if (filters.origin?.state) {
-    query = query.ilike('origin_state', `%${filters.origin.state}%`)
+    query = query.ilike('origin->>state', `%${filters.origin.state}%`)
   }
   if (filters.destination?.city) {
-    query = query.ilike('destination_city', `%${filters.destination.city}%`)
+    query = query.ilike('destination->>city', `%${filters.destination.city}%`)
   }
   if (filters.destination?.state) {
-    query = query.ilike('destination_state', `%${filters.destination.state}%`)
+    query = query.ilike('destination->>state', `%${filters.destination.state}%`)
   }
 
   // Equipment type filter
   if (filters.equipment_types?.length) {
-    query = query.in('equipment_type', filters.equipment_types)
+    query = query.overlaps('equipment', filters.equipment_types)
   }
 
-  // Cargo type filter
+  // Cargo type filter (using cargo description for now)
   if (filters.cargo_types?.length) {
-    query = query.in('cargo_type', filters.cargo_types)
+    const cargoQueries = filters.cargo_types.map(type => `cargo_details->>description.ilike.%${type}%`).join(',')
+    query = query.or(cargoQueries)
   }
 
   // Date range filters
@@ -141,34 +141,32 @@ function applyFilters(query: any, filters: SearchFilters, userId: string) {
 
   // Rate filters
   if (filters.rate_range?.min) {
-    query = query.gte('rate', filters.rate_range.min)
+    query = query.gte('minimum_rate', filters.rate_range.min)
   }
   if (filters.rate_range?.max) {
-    query = query.lte('rate', filters.rate_range.max)
+    query = query.lte('minimum_rate', filters.rate_range.max)
   }
 
-  // Rate per mile filters
-  if (filters.rate_per_mile_range?.min) {
-    query = query.gte('rate_per_mile', filters.rate_per_mile_range.min)
-  }
-  if (filters.rate_per_mile_range?.max) {
-    query = query.lte('rate_per_mile', filters.rate_per_mile_range.max)
+  // Rate per mile filters (calculated from rate and distance)
+  if (filters.rate_per_mile_range?.min || filters.rate_per_mile_range?.max) {
+    // This would require a calculated field - for now skip this complex filter
+    console.log('Rate per mile filtering not yet implemented for JSONB schema')
   }
 
   // Weight filters
   if (filters.weight_range?.min) {
-    query = query.gte('weight', filters.weight_range.min)
+    query = query.gte('cargo_details->>weight', filters.weight_range.min)
   }
   if (filters.weight_range?.max) {
-    query = query.lte('weight', filters.weight_range.max)
+    query = query.lte('cargo_details->>weight', filters.weight_range.max)
   }
 
   // Distance filters
   if (filters.distance_range?.min) {
-    query = query.gte('distance', filters.distance_range.min)
+    query = query.gte('metadata->>distance', filters.distance_range.min)
   }
   if (filters.distance_range?.max) {
-    query = query.lte('distance', filters.distance_range.max)
+    query = query.lte('metadata->>distance', filters.distance_range.max)
   }
 
   // Status filters
@@ -207,10 +205,10 @@ function applyFilters(query: any, filters: SearchFilters, userId: string) {
   if (filters.search_text) {
     const searchTerm = `%${filters.search_text}%`
     query = query.or(`
-      cargo_description.ilike.${searchTerm},
-      notes.ilike.${searchTerm},
-      origin_city.ilike.${searchTerm},
-      destination_city.ilike.${searchTerm}
+      cargo_details->>description.ilike.${searchTerm},
+      metadata->>special_requirements.ilike.${searchTerm},
+      origin->>city.ilike.${searchTerm},
+      destination->>city.ilike.${searchTerm}
     `)
   }
 
