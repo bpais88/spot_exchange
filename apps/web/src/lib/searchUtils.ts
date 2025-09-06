@@ -17,10 +17,45 @@ import {
 } from './types/search'
 
 /**
- * Validate search filters
+ * Validate search filters with enhanced security checks
  */
 export function validateSearchFilters(filters: SearchFilters): FilterValidationError[] {
   const errors: FilterValidationError[] = []
+
+  // Validate search text for security
+  if (filters.search_text) {
+    const textError = validateSearchText(filters.search_text)
+    if (textError) errors.push(textError)
+  }
+
+  // Validate location strings
+  if (filters.origin?.city) {
+    const cityError = validateLocationString(filters.origin.city, 'origin')
+    if (cityError) errors.push(cityError)
+  }
+  
+  if (filters.origin?.state) {
+    const stateError = validateLocationString(filters.origin.state, 'origin')
+    if (stateError) errors.push(stateError)
+  }
+  
+  if (filters.destination?.city) {
+    const cityError = validateLocationString(filters.destination.city, 'destination')
+    if (cityError) errors.push(cityError)
+  }
+  
+  if (filters.destination?.state) {
+    const stateError = validateLocationString(filters.destination.state, 'destination')
+    if (stateError) errors.push(stateError)
+  }
+
+  // Validate cargo types for security
+  if (filters.cargo_types?.length) {
+    for (const cargoType of filters.cargo_types) {
+      const cargoError = validateLocationString(cargoType, 'cargo_types')
+      if (cargoError) errors.push(cargoError)
+    }
+  }
 
   // Validate date ranges
   if (filters.pickup_date_range) {
@@ -65,12 +100,38 @@ export function validateSearchFilters(filters: SearchFilters): FilterValidationE
     if (destError) errors.push(destError)
   }
 
-  // Validate arrays
-  if (filters.equipment_types && filters.equipment_types.length === 0) {
-    errors.push({
-      field: 'equipment_types',
-      message: 'At least one equipment type must be selected'
-    })
+  // Validate equipment types
+  if (filters.equipment_types?.length) {
+    const validEquipmentTypes = [
+      'dry_van', 'reefer', 'flatbed', 'step_deck', 'lowboy', 
+      'tanker', 'container', 'box_truck', 'straight_truck', 'hotshot'
+    ]
+    
+    for (const type of filters.equipment_types) {
+      if (!validEquipmentTypes.includes(type)) {
+        errors.push({
+          field: 'equipment_types',
+          message: `Invalid equipment type: ${type}`
+        })
+      }
+    }
+  }
+
+  // Validate cargo types  
+  if (filters.cargo_types?.length) {
+    const validCargoTypes = [
+      'general', 'electronics', 'food', 'hazmat', 'automotive', 
+      'machinery', 'textiles', 'chemicals', 'furniture', 'paper'
+    ]
+    
+    for (const type of filters.cargo_types) {
+      if (!validCargoTypes.includes(type)) {
+        errors.push({
+          field: 'cargo_types',
+          message: `Invalid cargo type: ${type}`
+        })
+      }
+    }
   }
 
   // Validate pagination
@@ -495,4 +556,115 @@ export function getFiltersDescription(filters: SearchFilters): string {
   }
 
   return parts.length > 0 ? parts.join(', ') : 'All opportunities'
+}
+
+/**
+ * Security validation functions for search inputs
+ */
+
+/**
+ * Validate search text for security threats
+ */
+function validateSearchText(text: string): FilterValidationError | null {
+  if (!text || typeof text !== 'string') {
+    return {
+      field: 'search_text',
+      message: 'Search text must be a valid string'
+    }
+  }
+
+  // Check length limits
+  if (text.length > 200) {
+    return {
+      field: 'search_text', 
+      message: 'Search text cannot exceed 200 characters'
+    }
+  }
+
+  // Check for potentially dangerous SQL injection patterns
+  const dangerousPatterns = [
+    /union\s+select/i,
+    /insert\s+into/i, 
+    /delete\s+from/i,
+    /drop\s+table/i,
+    /alter\s+table/i,
+    /exec\s*\(/i,
+    /xp_/i,
+    /sp_/i,
+    /'.*'.*or.*'.*'/i,
+    /;\s*--/,
+    /--\s*$/,
+    /\/\*.*\*\//,
+    /\\x[0-9a-f]{2}/i,
+    /'\s*;\s*drop/i,
+    /'\s*union/i,
+    /'\s*or\s+1=1/i,
+    /'\s*or\s+'1'='1'/i,
+    /script\s*:/i,
+    /javascript\s*:/i
+  ]
+
+  for (const pattern of dangerousPatterns) {
+    if (pattern.test(text)) {
+      return {
+        field: 'search_text',
+        message: 'Search text contains potentially unsafe characters'
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Validate location string (city/state) for security
+ */
+function validateLocationString(location: string, fieldName: keyof SearchFilters): FilterValidationError | null {
+  if (!location || typeof location !== 'string') {
+    return {
+      field: fieldName,
+      message: `Location field must be a valid string`
+    }
+  }
+
+  // Check length limits
+  if (location.length > 100) {
+    return {
+      field: fieldName,
+      message: `Location field cannot exceed 100 characters`
+    }
+  }
+
+  // Only allow alphanumeric characters, spaces, hyphens, and periods
+  if (!/^[a-zA-Z0-9\s\-\.']+$/.test(location)) {
+    return {
+      field: fieldName,
+      message: `Location field contains invalid characters`
+    }
+  }
+
+  // Check for SQL injection patterns
+  const sqlPatterns = [
+    /'/g,
+    /;/g,
+    /--/g,
+    /\/\*/g,
+    /\*\//g,
+    /union/i,
+    /select/i,
+    /insert/i,
+    /delete/i,
+    /drop/i
+  ]
+
+  for (const pattern of sqlPatterns) {
+    if (pattern.test(location)) {
+      return {
+        field: fieldName,
+        message: `Location field contains potentially unsafe characters`
+      }
+    }
+  }
+
+  return null
 }
