@@ -52,7 +52,9 @@ export async function getCurrentUser() {
       ...userData,
       name: userData.profile?.name || userData.email,
       phone: userData.profile?.phone,
-      status: userData.profile?.status || 'active'
+      status: userData.profile?.status || 'active',
+      tenant_id: userData.tenant_id, // Include tenant_id for easy access
+      role: userData.role
     }
   }
 }

@@ -79,14 +79,24 @@ export default function Dashboard() {
     try {
       const { supabase } = await import('@/lib/supabase')
       
-      // Get the first tenant_id from the database (for testing)
-      const { data: tenantData } = await supabase
-        .from('tenants')
-        .select('id')
-        .limit(1)
-        .single()
+      // Get the current user's tenant_id
+      let tenantId = user?.profile?.tenant_id
       
-      const tenantId = tenantData?.id || 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' // fallback UUID
+      if (!tenantId) {
+        // If user doesn't have tenant_id in profile, get it from users table
+        const { data: userData } = await supabase
+          .from('users')
+          .select('tenant_id')
+          .eq('id', user.id)
+          .single()
+        
+        tenantId = userData?.tenant_id
+      }
+      
+      if (!tenantId) {
+        alert('Unable to create test opportunities: No tenant found for user. Please try registering a new account.')
+        return
+      }
       
       const testOpportunities = [
         {

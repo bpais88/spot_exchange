@@ -13,6 +13,7 @@ export default function Register() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [companyName, setCompanyName] = useState('')
+  const [userRole, setUserRole] = useState('carrier')
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -41,35 +42,39 @@ export default function Register() {
     setLoading(true)
     
     try {
-      const { supabase } = await import('@/lib/supabase')
-      
-      const { data, error } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-        options: {
-          data: {
-            company_name: companyName,
-            user_role: 'carrier'
-          }
-        }
+      // Use our custom registration API that handles tenant onboarding
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          companyName,
+          userRole
+        }),
       })
 
-      if (error) {
-        logError(error, 'User registration')
-        showError(error, 'Registration failed. Please try again with different details.')
-        return
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Registration failed')
       }
 
-      if (data.user && !data.user.email_confirmed_at) {
-        alert('Registration successful! Please check your email to verify your account before signing in.')
-        router.push('/auth/login')
-      } else if (data.user) {
-        // Auto-sign in successful
-        router.push('/dashboard')
+      if (result.success) {
+        if (result.requiresSignIn) {
+          alert('Registration successful! Please sign in with your new account.')
+          router.push('/auth/login')
+        } else {
+          // Auto-sign in was successful
+          alert(`Welcome to Spot Exchange! Your company "${companyName}" has been set up.`)
+          router.push('/dashboard')
+        }
       }
-    } catch (error) {
-      logError(error, 'Registration process')
-      showError(error, 'Registration failed. Please try again.')
+    } catch (error: any) {
+      console.error('Registration failed:', error)
+      alert(error.message || 'Registration failed. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -114,6 +119,27 @@ export default function Register() {
                   placeholder="Your company name"
                 />
               </div>
+            </div>
+
+            <div>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                Account Type
+              </label>
+              <div className="mt-1">
+                <select
+                  id="role"
+                  name="role"
+                  value={userRole}
+                  onChange={(e) => setUserRole(e.target.value)}
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-white"
+                >
+                  <option value="carrier">Carrier - I transport freight</option>
+                  <option value="account_manager">Account Manager - I manage freight opportunities</option>
+                </select>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Choose the role that best describes how you'll use Spot Exchange
+              </p>
             </div>
 
             <div>
