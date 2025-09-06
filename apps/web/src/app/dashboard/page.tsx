@@ -69,8 +69,8 @@ export default function Dashboard() {
   const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [opportunities, setOpportunities] = useState(mockOpportunities)
-  const [filteredOpportunities, setFilteredOpportunities] = useState(mockOpportunities)
+  const [opportunities, setOpportunities] = useState<typeof mockOpportunities>([])
+  const [filteredOpportunities, setFilteredOpportunities] = useState<typeof mockOpportunities>([])
   const [filter, setFilter] = useState('all')
   const [showChat, setShowChat] = useState<string | null>(null)
   const [selectedOpportunityDetails, setSelectedOpportunityDetails] = useState<string | null>(null)
@@ -289,10 +289,10 @@ export default function Dashboard() {
       setFilteredOpportunities(transformedOpportunities)
     } catch (error) {
       console.error('Failed to load opportunities:', error)
-      // Fallback to mock data on database connection errors
-      console.log('Using mock data due to database error')
-      setOpportunities(mockOpportunities)
-      setFilteredOpportunities(mockOpportunities)
+      // On database errors, show empty state instead of mock data
+      console.log('Database error - showing empty state')
+      setOpportunities([])
+      setFilteredOpportunities([])
     }
   }
 

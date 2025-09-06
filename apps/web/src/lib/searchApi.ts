@@ -161,11 +161,11 @@ export async function loadSavedSearch(savedSearch: SavedSearch): Promise<{
   filters: SearchFilters
   updatedSearch: SavedSearch
 }> {
-  // Update usage statistics
-  const updatedSearch = await useSavedSearch(savedSearch.id)
+  // For now, just return the saved search without usage tracking
+  // TODO: Implement proper usage tracking later
   
   return {
     filters: savedSearch.filters,
-    updatedSearch
+    updatedSearch: savedSearch
   }
 }
