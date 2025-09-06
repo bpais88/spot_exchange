@@ -6,6 +6,7 @@ import { Truck, MapPin, Calendar, DollarSign, MessageSquare, TrendingUp, Filter,
 import Chat from '@/components/Chat'
 import OpportunityDetailsSidebar from '@/components/OpportunityDetailsSidebar'
 import SearchContainer from '@/components/SearchContainer'
+import { logError, logWarning, measurePerformance } from '@/lib/monitoring'
 
 // Mock data for development
 const mockOpportunities = [
@@ -298,6 +299,12 @@ export default function Dashboard() {
       setOpportunities(transformedOpportunities)
       setFilteredOpportunities(transformedOpportunities)
     } catch (error) {
+      logError(error as Error, {
+        userId: user?.id,
+        tenantId: user?.profile?.tenant_id,
+        component: 'Dashboard',
+        action: 'loadOpportunities'
+      })
       console.error('Failed to load opportunities:', error)
       // On database errors, show empty state instead of mock data
       console.log('Database error - showing empty state')
@@ -398,6 +405,18 @@ export default function Dashboard() {
         .single()
 
       if (bidError) {
+        logError(new Error(`Bid placement failed: ${bidError.message}`), {
+          userId: user?.id,
+          tenantId: user?.profile?.tenant_id,
+          component: 'Dashboard',
+          action: 'handlePlaceBid',
+          additionalData: { 
+            opportunityId: selectedOpportunityDetails,
+            amount,
+            errorCode: bidError.code 
+          }
+        })
+        
         if (bidError.code === '23505') {
           alert('You already have an active bid on this opportunity. Please withdraw your current bid first if you want to place a new one.')
           return
