@@ -239,7 +239,7 @@ export default function Dashboard() {
       if (error) {
         console.error('Error fetching opportunities:', error)
         // If no opportunities found, show empty state instead of mock data
-        if (error.code === 'PGRST116' || !opportunitiesData || opportunitiesData.length === 0) {
+        if (error.code === 'PGRST116' || !opportunitiesData) {
           console.log('No opportunities found in database - showing empty state')
           setOpportunities([])
           setFilteredOpportunities([])
